@@ -16,7 +16,7 @@ use color_eyre::eyre::{eyre, Context};
 use color_eyre::Result;
 use libc::{VMADDR_CID_ANY, VMADDR_PORT_ANY};
 use nix::sys::socket::{accept, bind, getsockname, socket, AddressFamily, SockFlag, SockType};
-use tracing::{debug, warn};
+use tracing::{debug, trace, warn};
 use vsock::VsockAddr;
 
 /// VirtIO-FS mount point configuration.
@@ -762,7 +762,7 @@ impl RunningQemu {
                             ) {
                                 Ok(bytes_read) if bytes_read > 0 => {
                                     let data = &buffer[..bytes_read];
-                                    debug!("Received systemd notification ({} bytes)", bytes_read);
+                                    trace!("Received systemd notification ({} bytes)", bytes_read);
 
                                     // Write raw data directly to target file
                                     target.write_all(data)?;

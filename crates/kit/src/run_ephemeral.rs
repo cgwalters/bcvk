@@ -1107,8 +1107,8 @@ Options=
         debug!("systemd version does not support vmm.notify_socket",);
         // For older systemd versions, write an unknown state
         status_writer.update(SupervisorStatus {
-            state: None,
             running: true,
+            ..Default::default()
         })?;
     };
 

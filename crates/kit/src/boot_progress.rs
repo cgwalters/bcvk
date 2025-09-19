@@ -4,6 +4,8 @@ use std::{fs::File, io::BufRead, time::Duration};
 
 use crate::supervisor_status::{StatusWriter, SupervisorState, SupervisorStatus};
 
+const SSH_ACCESS: &str = "ssh-access.target";
+
 /// Create a progress bar for boot status
 pub fn create_boot_progress_bar() -> ProgressBar {
     let pb = ProgressBar::new_spinner();
@@ -25,6 +27,7 @@ pub async fn monitor_boot_progress(piper: File, status_writer: StatusWriter) -> 
 
     let bufr = std::io::BufReader::new(piper);
 
+    let mut ssh_access = false;
     for line in bufr.lines() {
         let line = line?;
         let line = line.trim();
@@ -33,12 +36,26 @@ pub async fn monitor_boot_progress(piper: File, status_writer: StatusWriter) -> 
             tracing::trace!("Unhandled status line: {line}");
             continue;
         };
+        tracing::debug!("Got systemd notification: {k}={v}");
         match k {
             "READY" => {
-                status_writer.update(SupervisorStatus::new(SupervisorState::Ready))?;
+                let state = SupervisorState::ReachedTarget(v.to_owned());
+                status_writer.update(SupervisorStatus {
+                    state: Some(state),
+                    ssh_access,
+                    running: true,
+                })?;
             }
             "X_SYSTEMD_UNIT_ACTIVE" => {
-                status_writer.update_state(SupervisorState::ReachedTarget(v.to_owned()))?;
+                let state = SupervisorState::ReachedTarget(v.to_owned());
+                if v == SSH_ACCESS {
+                    ssh_access = true;
+                }
+                status_writer.update(SupervisorStatus {
+                    state: Some(state),
+                    ssh_access,
+                    running: true,
+                })?;
             }
             _ => {
                 tracing::trace!("Unhandled status line: {line}")

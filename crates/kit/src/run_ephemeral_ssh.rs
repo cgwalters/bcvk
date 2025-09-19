@@ -21,12 +21,12 @@ pub struct RunEphemeralSshOpts {
     pub ssh_args: Vec<String>,
 }
 
-/// Wait for VM readiness using the supervisor status file
+/// Wait for VM SSH availability using the supervisor status file
 ///
-/// Monitors /run/supervisor-status.json inside the container for VM readiness.
-/// Returns Ok(true) when the VM is ready, or an error on timeout.
+/// Monitors /run/supervisor-status.json inside the container for SSH.
+/// Returns Ok(true) when systemd indicates ssh is probably ready.
 /// Returns Ok(false) if we don't support systemd status notifications.
-pub fn wait_for_vm_ready(
+pub fn wait_for_vm_ssh(
     container_name: &str,
     timeout: Duration,
     progress: ProgressBar,
@@ -65,15 +65,17 @@ pub fn wait_for_vm_ready(
         let status = serde_json::from_str::<SupervisorStatus>(&line)?;
         debug!("Status update: {:?}", status.state);
 
+        if status.ssh_access {
+            // End the monitor
+            let _ = child.kill();
+            return Ok((true, progress));
+        }
+
         if let Some(state) = status.state {
             match state {
                 SupervisorState::Ready => {
                     debug!("VM is ready!");
                     progress.set_message("Ready");
-
-                    // End the monitor
-                    let _ = child.kill();
-                    return Ok((true, progress));
                 }
                 SupervisorState::ReachedTarget(ref target) => {
                     progress.set_message(format!("Reached target {}", target));
@@ -103,10 +105,7 @@ pub fn wait_for_ssh_ready(
     timeout: Duration,
     progress: ProgressBar,
 ) -> Result<ProgressBar> {
-    let (r, progress) = wait_for_vm_ready(container_name, timeout, progress)?;
-    if r {
-        return Ok(progress);
-    }
+    let (_, progress) = wait_for_vm_ssh(container_name, timeout, progress)?;
 
     debug!(
         "Polling SSH connectivity (timeout: {}s)...",
