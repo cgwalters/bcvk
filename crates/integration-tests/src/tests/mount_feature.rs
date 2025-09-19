@@ -124,8 +124,6 @@ pub fn test_mount_feature_bind() {
         .expect("Failed to run bcvk with bind mount");
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    dbg!(&stdout);
-    dbg!(String::from_utf8_lossy(&output.stderr));
     assert!(stdout.contains("ok mount verify"));
 
     println!("Successfully tested and verified bind mount feature");
