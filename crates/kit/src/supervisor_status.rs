@@ -10,6 +10,8 @@ use std::path::Path;
 pub struct SupervisorStatus {
     /// Current state of the supervisor/VM
     pub state: Option<SupervisorState>,
+    /// If we saw ssh-access.target
+    pub ssh_access: bool,
     /// True if qemu is running
     pub running: bool,
 }
@@ -41,6 +43,7 @@ impl SupervisorStatus {
         Self {
             state: Some(state),
             running: true,
+            ..Default::default()
         }
     }
 
